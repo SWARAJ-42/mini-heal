@@ -101,3 +101,13 @@ def test_new_task_defaults_to_incomplete(client):
 
     assert response.status_code == 201
     assert response.json()["completed"] is False
+
+
+def test_health_check_includes_database_status(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "database": "ok",
+    }
