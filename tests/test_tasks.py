@@ -1,4 +1,3 @@
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -111,3 +110,49 @@ def test_health_check_includes_database_status(client):
         "status": "ok",
         "database": "ok",
     }
+
+
+from scripts.diagnose import diagnose
+
+
+def test_healthy_service():
+    health = {
+        "reachable": True,
+        "http_status": 200,
+        "body": {"status": "ok", "database": "ok"},
+    }
+
+    assert diagnose("running", health) == "HEALTHY"
+
+
+def test_stopped_container():
+    health = {
+        "reachable": False,
+        "http_status": None,
+        "body": {},
+    }
+
+    assert diagnose("exited", health) == "CONTAINER_NOT_RUNNING"
+
+
+def test_unreachable_service():
+    health = {
+        "reachable": False,
+        "http_status": None,
+        "body": {},
+    }
+
+    assert diagnose("running", health) == "SERVICE_UNREACHABLE"
+
+
+def test_failed_health_check():
+    health = {
+        "reachable": True,
+        "http_status": 503,
+        "body": {
+            "status": "unhealthy",
+            "database": "unavailable",
+        },
+    }
+
+    assert diagnose("running", health) == "HEALTH_CHECK_FAILED"

@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Boolean, DateTime, Integer, String, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from app import config
 from app.database import Base, SessionLocal, engine
 
 
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="MiniHeal", lifespan=lifespan)
+app = FastAPI(title=config.APP_NAME, lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -83,13 +84,22 @@ async def log_requests(request, call_next):
 
 
 
+
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
     try:
+        if config.SIMULATE_DB_FAILURE:
+            raise RuntimeError(
+                "Simulated database connectivity failure"
+            )
+
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "ok"}
+
     except Exception:
-        logger.exception("Health check failed: database unavailable")
+        logger.exception(
+            "Health check failed: database unavailable"
+        )
         return JSONResponse(
             status_code=503,
             content={
